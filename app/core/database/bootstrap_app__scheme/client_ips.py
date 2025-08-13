@@ -1,4 +1,3 @@
-# app/core/database/bootstrap_app_scheme/client_ips.py
 from __future__ import annotations
 from datetime import datetime
 from typing import Optional
@@ -25,4 +24,4 @@ class ClientIPs(SQLModel, table=True):
     integrationClientCod: int = Field(sa_column=Column("integration_client_cod",ForeignKey(f"{schema_name}.integration_clients.cod_integration_client", ondelete="CASCADE"),nullable=False))
     cidr: str = Field(sa_column=Column("cidr", CIDR, nullable=False))
     
-    integrationClient: Optional[IntegrationClients] = Relationship(back_populates="ips",sa_relationship_kwargs={"lazy": "selectin"},)
+    integrationClient: "IntegrationClients" | None = Relationship(back_populates="ips")

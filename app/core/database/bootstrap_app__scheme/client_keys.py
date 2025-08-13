@@ -33,4 +33,4 @@ class ClientKeys(SQLModel, table=True):
     alg: str = Field(default="HS256", sa_column=Column("alg", String(16), nullable=False, server_default="HS256"))
     kid: str = Field(sa_column=Column("kid", String(64), nullable=False))
 
-    integrationClient: Optional[IntegrationClients] = Relationship( back_populates="keys",sa_relationship_kwargs={"lazy": "selectin"},)
+    integrationClient: "IntegrationClients" | None = Relationship(back_populates="keys")

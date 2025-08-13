@@ -1,5 +1,7 @@
+from contextlib import contextmanager
+
 from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 
 
 from app import crud
@@ -7,6 +9,11 @@ from app.core.config import settings
 from app.core.database.mcs_scheme.users import User, UserCreate
 
 engine = create_engine(str(settings.db.SQLALCHEMY_DATABASE_URI))
+
+@contextmanager
+def get_session():
+    with Session(engine) as session:
+        yield session
 
 
 # make sure all SQLModel models are imported (app.models) before initializing DB
