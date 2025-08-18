@@ -1,4 +1,5 @@
-schema_name = "bootstrap_app"
+from .. import schema_name
+
 from .integration_clients import IntegrationClients
 from .client_ips import ClientIPs
 from .client_keys import ClientKeys

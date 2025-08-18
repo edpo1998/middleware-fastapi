@@ -8,7 +8,7 @@ class SecuritySettings(BaseModel):
     FIRST_SUPERUSER: str = "changethis"
     FIRST_SUPERUSER_PASSWORD: str = "changethis"
 
-    ENABLE_HMAC: bool = False
+    ENABLE_HMAC: bool = True
     HMAC_WINDOW_SECONDS: int = 300
     ENABLE_TIMESTAMP: bool = False
     REQUIRE_TIMESTAMP_WITH_NONCE: bool = False      

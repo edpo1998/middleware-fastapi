@@ -1,33 +1,37 @@
-from fastapi import APIRouter, Depends, Request
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from sqlmodel import Session
+from sqlalchemy import select
 
-from app.core.security.hmac_auth import hmac_auth
-from app.core.security.idempotency import begin_idempotency, finalize_idempotency, get_idempotency_key
-from app.core.database.db_sync import get_session
+from app.api.middlewares import IdempotentRoute          
+from app.core.security.hmac_auth import hmac_auth    
+from app.api.deps import SessionDep                 
+from app.core.database.mcs_scheme.models import User 
 
-router = APIRouter()
+router = APIRouter(route_class=IdempotentRoute)
 
-@router.post("/invoices")
+@router.post("/invoices", dependencies=[Depends(hmac_auth)])
 async def create_invoice(
     request: Request,
-    session: Session = Depends(get_session),
-    auth = Depends(hmac_auth),
-    idem_key: str | None = Depends(get_idempotency_key),
+    session: SessionDep,
 ):
-    body: bytes = auth["body"]  # ya lo leyó hmac_auth; evita .body() doble
+    result = await session.execute(select(User).order_by(User.id).limit(1))
+    user = result.scalar_one_or_none()
 
-    idem = begin_idempotency(session, auth["client_id"], idem_key, body)
-    if isinstance(idem, dict) and idem.get("replay"):
-        return JSONResponse(status_code=idem["status"], content=idem["body"])
+    if user is None:
+        raise HTTPException(status_code=404, detail="No users found")
 
-    # TODO: valida/transforma -> llama SAP B1 (Service Layer) -> construye respuesta
-    response_payload = {
-        "status": "received",
-        "client": auth["client_id"],
-        "echo": "invoice accepted for processing"
-    }
-    status_code = 200
-
-    finalize_idempotency(session, idem and idem.get("record_id"), status_code, response_payload)
-    return JSONResponse(status_code=status_code, content=response_payload)
+    return JSONResponse(
+        status_code=201,
+        content={
+            "user": {
+                "id": str(user.id),
+                "email": user.email,
+                "full_name": user.full_name,
+                "is_active": bool(user.is_active),
+                "is_superuser": bool(user.is_superuser),
+            },
+            "message": "invoice created (dummy payload)",
+        },
+    )

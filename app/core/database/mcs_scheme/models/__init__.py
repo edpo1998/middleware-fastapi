@@ -1,5 +1,4 @@
-schema_name = "mcs"
-
+from .. import schema_name
 from .users import User
 from .items import Item
 
