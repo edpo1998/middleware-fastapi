@@ -7,8 +7,8 @@ from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.database.db import get_session
-from app.core.database.bootstrap_app__scheme import (
+from app.core.database.db_sync import get_session
+from app.core.database.bootstrap_app_scheme.models import (
     IntegrationClients, ClientKeys, ClientIPs, SecurityNonces
 )
 

@@ -5,10 +5,9 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, delete
 
 from app.core.config import settings
-from app.core.database.db import engine, init_db
+from app.core.database.db_sync import engine, init_db
 from app.main import app
-from app.core.database.mcs_scheme.users import User
-from app.core.database.mcs_scheme.items import Item
+from app.core.database.mcs_scheme.models import User, Item
 
 from app.tests.utils.user import authentication_token_from_email
 from app.tests.utils.utils import get_superuser_token_headers

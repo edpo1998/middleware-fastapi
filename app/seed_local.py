@@ -1,185 +1,123 @@
+# app/initial_data.py
 from __future__ import annotations
+import os
+import asyncio
+import logging
+from typing import Optional
 
-import sys
-from datetime import datetime, timedelta, UTC
-import uuid
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy import select
 
-from sqlmodel import Session, select
+from app.core.config import Settings
+import app.core.database  # fuerza registro de metadata/modelos
 
-# --- Ajusta estos imports según tu proyecto ---
-from app.core.database.db import engine  # si no tienes engine aquí, importa get_session y crea Session
-from app.core.security.security import get_password_hash
-
-# Bootstrap / seguridad (HMAC)
-from app.core.database.bootstrap_app__scheme import (
+from app.core.database.bootstrap_app_scheme.models import (
     IntegrationClients,
     ClientKeys,
     ClientIPs,
 )
 
-# Usuarios (JWT)
-from app.core.database.mcs_scheme.users import User
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Variables configurables por ENV
+CLIENT_ID = os.getenv("BOOTSTRAP_CLIENT_ID", "bootstrap-client")
+CLIENT_NAME = os.getenv("BOOTSTRAP_CLIENT_NAME", "Bootstrap Client")
+KEY_KID = os.getenv("BOOTSTRAP_KEY_KID", "bootstrap-kid")
+KEY_SECRET = os.getenv("BOOTSTRAP_KEY_SECRET", "bootstrap-secret")
+IP_CIDR = os.getenv("BOOTSTRAP_IP_CIDR", "127.0.0.1/32")
 
 
-# --------- Config de seed (puedes cambiar) ----------
-CLIENT_ID = "logistaas-local"
-CLIENT_NAME = "Logistaas Local"
-KEY_ID = "K1"
-KEY_SECRET = "devsecret123"
-KEY_ALG = "HS256"
-IP_ALLOWLIST = ["127.0.0.1/32", "::1/128"]
+async def _get_or_create_client(session: AsyncSession) -> IntegrationClients:
+    res = await session.execute(
+        select(IntegrationClients).where(IntegrationClients.clientId == CLIENT_ID)
+    )
+    existing: Optional[IntegrationClients] = res.scalars().first()
+    if existing:
+        logger.info("Cliente ya existe: %s (cod=%s)", existing.clientId, existing.codIntegrationClient)
+        return existing
 
-ADMIN_EMAIL = "admin@example.com"
-ADMIN_PASSWORD = "changeme123"
-ADMIN_FULLNAME = "Admin"
-# ----------------------------------------------------
-
-
-def upsert_integration_client(session: Session) -> IntegrationClients:
-    now = datetime.now(UTC).replace(tzinfo=None)
-
-    client = session.exec(
-        select(IntegrationClients).where(
-            IntegrationClients.clientId == CLIENT_ID
-        )
-    ).first()
-
-    if client:
-        # si existe, asegúrate que esté activo y con nombre correcto
-        client.name = CLIENT_NAME
-        client.active = True
-        client.updateDate = now
-        session.add(client)
-        session.commit()
-        session.refresh(client)
-        print(f"[OK] IntegrationClient reutilizado: {client.clientId} (cod={client.codIntegrationClient})")
-        return client
-
-    client = IntegrationClients(
-        createDate=now,
-        updateDate=None,
-        deleteDate=None,
-        createUser=0,
-        userAt=0,
+    ic = IntegrationClients(
+        createUser=1,
+        userAt=1,
         active=True,
         clientId=CLIENT_ID,
         name=CLIENT_NAME,
     )
-    session.add(client)
-    session.commit()
-    session.refresh(client)
-    print(f"[OK] IntegrationClient creado: {client.clientId} (cod={client.codIntegrationClient})")
-    return client
+    session.add(ic)
+    await session.flush()  # para tener codIntegrationClient
+    logger.info("Cliente creado: %s (cod=%s)", ic.clientId, ic.codIntegrationClient)
+    return ic
 
 
-def upsert_client_key(session: Session, client: IntegrationClients) -> ClientKeys:
-    now = datetime.now(UTC).replace(tzinfo=None)
-    key = session.exec(
+async def _ensure_key(session: AsyncSession, client: IntegrationClients) -> None:
+    res = await session.execute(
         select(ClientKeys).where(
-            ClientKeys.integrationClientCod == client.codIntegrationClient,
-            ClientKeys.kid == KEY_ID
+            (ClientKeys.integrationClientCod == client.codIntegrationClient)
+            & (ClientKeys.kid == KEY_KID)
         )
-    ).first()
-
-    if key:
-        key.secret = KEY_SECRET
-        key.alg = KEY_ALG
-        key.active = True
-        key.updateDate = now
-        session.add(key)
-        session.commit()
-        session.refresh(key)
-        print(f"[OK] ClientKey reutilizada: kid={key.kid}")
-        return key
-
-    key = ClientKeys(
-        createDate=now,
-        updateDate=None,
-        deleteDate=None,
-        createUser=0,
-        userAt=0,
-        active=True,
-        integrationClientCod=client.codIntegrationClient,
-        expiresAt=now + timedelta(days=3650),  # ~10 años para dev
-        lastUsedAt=now,
-        secret=KEY_SECRET,
-        alg=KEY_ALG,
-        kid=KEY_ID,
     )
-    session.add(key)
-    session.commit()
-    session.refresh(key)
-    print(f"[OK] ClientKey creada: kid={key.kid}")
-    return key
-
-
-def ensure_client_ips(session: Session, client: IntegrationClients) -> None:
-    existing = session.exec(
-        select(ClientIPs).where(
-            ClientIPs.integrationClientCod == client.codIntegrationClient
-        )
-    ).all()
-    have = {row.cidr for row in existing}
-
-    to_add = [cidr for cidr in IP_ALLOWLIST if cidr not in have]
-    if not to_add:
-        print("[OK] ClientIPs: allowlist ya presente")
+    exists = res.scalars().first()
+    if exists:
+        logger.info("Key ya existe (kid=%s)", KEY_KID)
         return
 
-    now = datetime.now(UTC).replace(tzinfo=None)
-    for cidr in to_add:
-        session.add(ClientIPs(
-            createDate=now,
-            updateDate=None,
-            deleteDate=None,
-            createUser=0,
-            userAt=0,
-            active=True,
-            integrationClientCod=client.codIntegrationClient,
-            cidr=cidr,
-        ))
-    session.commit()
-    print(f"[OK] ClientIPs añadidas: {', '.join(to_add)}")
-
-
-def upsert_admin_user(session: Session) -> User:
-    user = session.exec(
-        select(User).where(User.email == ADMIN_EMAIL)
-    ).first()
-
-    if user:
-        print(f"[OK] Admin reutilizado: {user.email}")
-        return user
-
-    hashed = get_password_hash(ADMIN_PASSWORD)
-    user = User(
-        id=uuid.uuid4(),
-        email=ADMIN_EMAIL,
-        full_name=ADMIN_FULLNAME,
-        is_active=True,
-        is_superuser=True,
-        hashed_password=hashed,
+    ck = ClientKeys(
+        createUser=1,
+        userAt=1,
+        active=True,
+        integrationClientCod=client.codIntegrationClient,  # type: ignore[arg-type]
+        secret=KEY_SECRET,
+        kid=KEY_KID,
+        alg="HS256",
     )
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    print(f"[OK] Admin creado: {user.email} (id={user.id})")
-    return user
+    session.add(ck)
+    logger.info("Key creada (kid=%s)", KEY_KID)
 
 
-def main():
-    print("== SEED LOCAL ==")
-    with Session(engine) as session:
-        client = upsert_integration_client(session)
-        upsert_client_key(session, client)
-        ensure_client_ips(session, client)
-        upsert_admin_user(session)
-    print("== DONE ==")
+async def _ensure_ip(session: AsyncSession, client: IntegrationClients) -> None:
+    res = await session.execute(
+        select(ClientIPs).where(
+            (ClientIPs.integrationClientCod == client.codIntegrationClient)
+            & (ClientIPs.cidr == IP_CIDR)
+        )
+    )
+    exists = res.scalars().first()
+    if exists:
+        logger.info("IP ya existe (cidr=%s)", IP_CIDR)
+        return
+
+    ip = ClientIPs(
+        createUser=1,
+        userAt=1,
+        active=True,
+        integrationClientCod=client.codIntegrationClient,  # type: ignore[arg-type]
+        cidr=IP_CIDR,
+    )
+    session.add(ip)
+    logger.info("IP creada (cidr=%s)", IP_CIDR)
+
+
+async def _run() -> None:
+    settings = Settings()
+    async_url = settings.db.SQLALCHEMY_DATABASE_URI  # URL objeto (postgresql+asyncpg)
+    engine = create_async_engine(async_url, pool_pre_ping=True, future=True)
+    Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    try:
+        async with Session() as session:
+            client = await _get_or_create_client(session)
+            await _ensure_key(session, client)
+            await _ensure_ip(session, client)
+            await session.commit()
+            logger.info("✅ Datos iniciales listos.")
+    finally:
+        await engine.dispose()
+
+
+def main() -> None:
+    asyncio.run(_run())
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print("[ERROR]", e)
-        sys.exit(1)
+    main()

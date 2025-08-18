@@ -1,4 +1,7 @@
-from collections.abc import Generator
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database.db_async import AsyncSessionLocal
+
 from typing import Annotated
 
 import jwt
@@ -10,18 +13,18 @@ from sqlmodel import Session
 
 from app.core import security
 from app.core.config import settings
-from app.core.database.db import engine
+from app.core.database.db_sync import engine
 
-from app.core.database.mcs_scheme.items import TokenPayload
-from app.core.database.mcs_scheme.users import User
+from app.core.database.mcs_scheme.models import User
+from app.core.database.mcs_scheme.pydantic import TokenPayload
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.app.API_V1_STR}/login/access-token"
 )
 
 
-def get_db() -> Generator[Session, None, None]:
-    with Session(engine) as session:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
         yield session
 
 

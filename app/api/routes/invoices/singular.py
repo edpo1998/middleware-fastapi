@@ -4,7 +4,7 @@ from sqlmodel import Session
 
 from app.core.security.hmac_auth import hmac_auth
 from app.core.security.idempotency import begin_idempotency, finalize_idempotency, get_idempotency_key
-from app.core.database.db import get_session
+from app.core.database.db_sync import get_session
 
 router = APIRouter()
 

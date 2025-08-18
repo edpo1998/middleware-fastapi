@@ -1,5 +1,5 @@
-from pydantic import computed_field, PostgresDsn, BaseModel
-from pydantic_core import MultiHostUrl
+from pydantic import computed_field, BaseModel
+from sqlalchemy.engine import URL
 
 class DatabaseSettings(BaseModel):
     POSTGRES_SERVER: str
@@ -7,15 +7,47 @@ class DatabaseSettings(BaseModel):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = ""
+    ECHO_SQL:bool = True
+
 
     @computed_field
     @property
-    def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
-        return MultiHostUrl.build(
-            scheme="postgresql+psycopg",
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
+        if bool(self.ECHO_SQL) :
+            return URL.create(
+            drivername="postgresql+asyncpg",
             username=self.POSTGRES_USER,
             password=self.POSTGRES_PASSWORD,
             host=self.POSTGRES_SERVER,
             port=self.POSTGRES_PORT,
-            path=self.POSTGRES_DB,
+            database=self.POSTGRES_DB
+            )
+        return URL.create(
+            drivername="postgresql+psycopg",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            database=self.POSTGRES_DB
         )
+    
+    @computed_field
+    @property
+    def SQLALCHEMY_DATABASE_URI_STR(self) -> str:
+        if bool(self.ECHO_SQL) :
+            return URL.create(
+            drivername="postgresql+asyncpg",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            database=self.POSTGRES_DB
+            ).render_as_string(hide_password=False)
+        return URL.create(
+            drivername="postgresql+psycopg",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            database=self.POSTGRES_DB
+        ).render_as_string(hide_password=False)

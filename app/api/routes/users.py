@@ -13,17 +13,16 @@ from app.api.deps import (
 from app.core.config import settings
 from app.core.security.security import get_password_hash, verify_password
 
-from app.core.database.mcs_scheme import (
-    Item,
+from app.core.database.mcs_scheme.models import Item, User
+from app.core.database.mcs_scheme.pydantic import (
     Message,
     UpdatePassword,
-    User,
     UserCreate,
     UserPublic,
     UserRegister,
     UsersPublic,
     UserUpdate,
-    UserUpdateMe,
+    UserUpdateMe
 )
 from app.utils import generate_new_account_email, send_email
 

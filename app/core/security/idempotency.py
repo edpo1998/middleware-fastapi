@@ -7,7 +7,7 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.database.bootstrap_app__scheme import IdempotencyKeys
+from app.core.database.bootstrap_app_scheme.models import IdempotencyKeys
 
 
 def _fingerprint(b: bytes) -> str:

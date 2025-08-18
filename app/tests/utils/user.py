@@ -3,7 +3,8 @@ from sqlmodel import Session
 
 from app import crud
 from app.core.config import settings
-from app.core.database.mcs_scheme.users import User, UserCreate, UserUpdate
+from app.core.database.mcs_scheme.models import User
+from app.core.database.mcs_scheme.pydantic import UserCreate, UserUpdate
 from app.tests.utils.utils import random_email, random_lower_string
 
 

@@ -1,7 +1,8 @@
 from sqlmodel import Session
 
 from app import crud
-from app.core.database.mcs_scheme.items import Item, ItemCreate
+from app.core.database.mcs_scheme.models import Item
+from app.core.database.mcs_scheme.pydantic import ItemCreate
 from app.tests.utils.user import create_random_user
 from app.tests.utils.utils import random_lower_string
 

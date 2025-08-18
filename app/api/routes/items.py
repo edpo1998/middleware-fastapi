@@ -5,7 +5,8 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
-from app.core.database.mcs_scheme.items import Item, ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, Message
+from app.core.database.mcs_scheme.models import Item
+from app.core.database.mcs_scheme.pydantic import ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, Message
 
 router = APIRouter(prefix="/items", tags=["items"])
 

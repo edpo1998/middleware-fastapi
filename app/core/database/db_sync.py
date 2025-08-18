@@ -1,3 +1,4 @@
+import logging
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine, select
@@ -6,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.core.config import settings
-from app.core.database.mcs_scheme.users import User, UserCreate
+from app.core.database.mcs_scheme.models import User
+from app.core.database.mcs_scheme.pydantic import UserCreate
 
 engine = create_engine(str(settings.db.SQLALCHEMY_DATABASE_URI))
 
@@ -29,11 +31,12 @@ def init_db(session: Session) -> None:
 
     # This works because the models are already imported and registered from app.models
     # SQLModel.metadata.create_all(engine)
-
+    logging.info("Verify user admin.")
     user = session.exec(
         select(User).where(User.email == settings.security.FIRST_SUPERUSER)
     ).first()
     if not user:
+        logging.info("Create user admin.")
         user_in = UserCreate(
             email=settings.security.FIRST_SUPERUSER,
             password=settings.security.FIRST_SUPERUSER_PASSWORD,
