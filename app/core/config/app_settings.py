@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 class AppSettings(BaseModel):
+    DEBUG: str = True
     PROJECT_NAME: str = "Logistaas-Middleware"
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "local"

@@ -13,19 +13,23 @@ from app.core.database.mcs_scheme.pydantic import (
 )
 
 
-# ---------------- USERS ----------------
-
 async def get_user(*, session: AsyncSession, user_id: uuid.UUID) -> User | None:
     res = await session.execute(select(User).where(User.id == user_id))
     return res.scalar_one_or_none()
+
+
 
 async def get_user_by_email(*, session: AsyncSession, email: str) -> User | None:
     res = await session.execute(select(User).where(User.email == email))
     return res.scalar_one_or_none()
 
+
+
 async def list_users(*, session: AsyncSession, skip: int = 0, limit: int = 100) -> Sequence[User]:
     res = await session.execute(select(User).offset(skip).limit(limit))
     return list(res.scalars().all())
+
+
 
 async def create_user(*, session: AsyncSession, user_in: UserCreate) -> User:
     hashed = get_password_hash(user_in.password)
@@ -35,6 +39,8 @@ async def create_user(*, session: AsyncSession, user_in: UserCreate) -> User:
     await session.refresh(db_user)
     return db_user
 
+
+
 async def upsert_user_by_email(*, session, user_in, is_superuser: bool | None = None) -> User:
     values = {
         "email": user_in.email,
@@ -43,10 +49,7 @@ async def upsert_user_by_email(*, session, user_in, is_superuser: bool | None = 
     }
     if is_superuser is not None:
         values["is_superuser"] = is_superuser
-
-    # 👇 clave: si el insert ocurre (no hay conflicto), mandamos un UUID para id
     values.setdefault("id", uuid.uuid4())
-
     stmt = (
         insert(User)
         .values(**values)
@@ -60,6 +63,8 @@ async def upsert_user_by_email(*, session, user_in, is_superuser: bool | None = 
     await session.commit()
     return res.scalar_one()
 
+
+
 async def update_user(*, session: AsyncSession, db_user: User, user_in: UserUpdate) -> User:
     data: dict[str, Any] = user_in.model_dump(exclude_unset=True)
     if "password" in data and data["password"]:
@@ -71,6 +76,8 @@ async def update_user(*, session: AsyncSession, db_user: User, user_in: UserUpda
     await session.refresh(db_user)
     return db_user
 
+
+
 async def authenticate(*, session: AsyncSession, email: str, password: str) -> User | None:
     user = await get_user_by_email(session=session, email=email)
     if not user or not verify_password(password, user.hashed_password):
@@ -78,7 +85,6 @@ async def authenticate(*, session: AsyncSession, email: str, password: str) -> U
     return user
 
 
-# ---------------- ITEMS ----------------
 
 async def create_item(*, session: AsyncSession, owner_id: uuid.UUID, item_in: ItemCreate) -> Item:
     db_item = Item.model_validate(item_in, update={"owner_id": owner_id})
@@ -87,6 +93,8 @@ async def create_item(*, session: AsyncSession, owner_id: uuid.UUID, item_in: It
     await session.refresh(db_item)
     return db_item
 
+
+
 async def list_items_by_owner(
     *, session: AsyncSession, owner_id: uuid.UUID, skip: int = 0, limit: int = 100
 ) -> Sequence[Item]:
@@ -94,6 +102,8 @@ async def list_items_by_owner(
         select(Item).where(Item.owner_id == owner_id).offset(skip).limit(limit)
     )
     return list(res.scalars().all())
+
+
 
 async def delete_item(*, session: AsyncSession, item_id: uuid.UUID) -> None:
     await session.execute(delete(Item).where(Item.id == item_id))

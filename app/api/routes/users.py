@@ -26,7 +26,7 @@ from app.core.database.mcs_scheme.pydantic import (
 )
 from app.utils import generate_new_account_email, send_email
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"], include_in_schema=False)
 
 
 @router.get(

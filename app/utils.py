@@ -1,3 +1,6 @@
+"""
+    Archivo con utilidades para los emails.
+"""
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone

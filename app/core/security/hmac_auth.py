@@ -166,9 +166,9 @@ async def hmac_auth(
     # MISMA cadena que usabas:
     signing_string = _canonical_v1(method, path, query, x_client_id, x_key_id, ts_for_sig, nonce_for_sig, body_hash)
     expected_sig = _hmac_b64(key.secret, signing_string)
-    print("HOLA")
-    print(signing_string)
-    print(expected_sig)
+    # print("HOLA")
+    # print(signing_string)
+    print(expected_sig) 
     print(x_signature)
     if not hmac.compare_digest(expected_sig, x_signature or ""):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid signature")

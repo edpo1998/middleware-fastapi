@@ -39,13 +39,11 @@ async def begin_idempotency(
 ) -> IdemResult:
     """
     Intenta crear registro 'processing'. Si ya existe:
-      - si terminó, devuelve cached=True con respuesta
-      - si sigue en curso, in_progress=True (puedes responder 409/425)
+      - si termino, devuelve cached=True con respuesta
+      - si sigue en curso, in_progress=True (puede responder con Conflicto|Repeticion)
     """
     if not getattr(settings.security, "ENABLE_IDEMPOTENCY", True):
         return {"record_id": None, "cached": False, "in_progress": False}
-
-    # 1) INSERT processing
     ins = text(f"""
         INSERT INTO {BOOTSTRAP_SCHEMA}.idempotency_keys
             (create_user, user_at, active, client_id, key, request_fingerprint, status)
@@ -55,9 +53,7 @@ async def begin_idempotency(
     """)
     res = await session.execute(ins, {"cid": client_id, "k": key, "fp": request_fingerprint})
     await session.commit()
-
     if res.rowcount == 1:
-        # registro nuevo => devuelve el id
         row = await session.execute(
             select(IdempotencyKeys.codIdempotencyKeys).where(
                 IdempotencyKeys.clientId == client_id,
@@ -67,16 +63,15 @@ async def begin_idempotency(
         rec_id = row.scalar_one()
         return {"record_id": rec_id, "cached": False, "in_progress": False}
 
-    # 2) Ya existía: ¿terminado o en curso?
     q = await session.execute(
         select(IdempotencyKeys).where(
             IdempotencyKeys.clientId == client_id,
             IdempotencyKeys.key == key,
         ).limit(1)
     )
+
     row = q.scalar_one_or_none()
     if not row:
-        # raro, pero evita reventar
         return {"record_id": None, "cached": False, "in_progress": False}
 
     if row.status != "processing" and row.httpStatus is not None:
@@ -100,7 +95,6 @@ async def finalize_idempotency(
 ) -> None:
     if not (getattr(settings.security, "ENABLE_IDEMPOTENCY", True) and record_id):
         return
-
     upd = text(f"""
         UPDATE {BOOTSTRAP_SCHEMA}.idempotency_keys
         SET response_json = :data::jsonb,

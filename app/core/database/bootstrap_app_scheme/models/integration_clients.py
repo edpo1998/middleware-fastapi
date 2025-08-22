@@ -35,10 +35,12 @@ class IntegrationClients(SQLModel, table=True):
         back_populates="integrationClient",
         lazy="selectin",
         cascade="all, delete-orphan",
+        uselist=True
     )
     ips: ClassVar[list["ClientIPs"]] = relationship(
         "ClientIPs",
         back_populates="integrationClient",
         lazy="selectin",
         cascade="all, delete-orphan",
+        uselist=True
     )

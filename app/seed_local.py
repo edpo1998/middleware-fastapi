@@ -1,4 +1,6 @@
-# app/initial_data.py
+"""
+    Contiene logica para la informacion inicial para el modulo de seguridad de la aplicacion.
+"""
 from __future__ import annotations
 import os
 import asyncio
@@ -20,7 +22,7 @@ from app.core.database.bootstrap_app_scheme.models import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Variables configurables por ENV
+
 CLIENT_ID = os.getenv("BOOTSTRAP_CLIENT_ID", "bootstrap-client")
 CLIENT_NAME = os.getenv("BOOTSTRAP_CLIENT_NAME", "Bootstrap Client")
 KEY_KID = os.getenv("BOOTSTRAP_KEY_KID", "bootstrap-kid")
@@ -61,12 +63,11 @@ async def _ensure_key(session: AsyncSession, client: IntegrationClients) -> None
     if exists:
         logger.info("Key ya existe (kid=%s)", KEY_KID)
         return
-
     ck = ClientKeys(
         createUser=1,
         userAt=1,
         active=True,
-        integrationClientCod=client.codIntegrationClient,  # type: ignore[arg-type]
+        integrationClientCod=client.codIntegrationClient,
         secret=KEY_SECRET,
         kid=KEY_KID,
         alg="HS256",
@@ -86,12 +87,11 @@ async def _ensure_ip(session: AsyncSession, client: IntegrationClients) -> None:
     if exists:
         logger.info("IP ya existe (cidr=%s)", IP_CIDR)
         return
-
     ip = ClientIPs(
         createUser=1,
         userAt=1,
         active=True,
-        integrationClientCod=client.codIntegrationClient,  # type: ignore[arg-type]
+        integrationClientCod=client.codIntegrationClient,
         cidr=IP_CIDR,
     )
     session.add(ip)
@@ -100,7 +100,7 @@ async def _ensure_ip(session: AsyncSession, client: IntegrationClients) -> None:
 
 async def _run() -> None:
     settings = Settings()
-    async_url = settings.db.SQLALCHEMY_DATABASE_URI  # URL objeto (postgresql+asyncpg)
+    async_url = settings.db.SQLALCHEMY_DATABASE_URI
     engine = create_async_engine(async_url, pool_pre_ping=True, future=True)
     Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -110,7 +110,7 @@ async def _run() -> None:
             await _ensure_key(session, client)
             await _ensure_ip(session, client)
             await session.commit()
-            logger.info("✅ Datos iniciales listos.")
+            logger.info("Datos de seguridad listos.")
     finally:
         await engine.dispose()
 

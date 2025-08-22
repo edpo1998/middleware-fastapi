@@ -7,13 +7,13 @@ class DatabaseSettings(BaseModel):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = ""
-    ECHO_SQL:bool = True
-
+    ECHO_SQL:bool = False
+    ASYNC_MODE:bool = True
 
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
-        if bool(self.ECHO_SQL) :
+        if bool(self.ASYNC_MODE) :
             return URL.create(
             drivername="postgresql+asyncpg",
             username=self.POSTGRES_USER,
@@ -34,7 +34,7 @@ class DatabaseSettings(BaseModel):
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI_STR(self) -> str:
-        if bool(self.ECHO_SQL) :
+        if bool(self.ASYNC_MODE) :
             return URL.create(
             drivername="postgresql+asyncpg",
             username=self.POSTGRES_USER,

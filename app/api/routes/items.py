@@ -8,7 +8,7 @@ from app.api.deps import CurrentUser, SessionDep
 from app.core.database.mcs_scheme.models import Item
 from app.core.database.mcs_scheme.pydantic import ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, Message
 
-router = APIRouter(prefix="/items", tags=["items"])
+router = APIRouter(prefix="/items", tags=["items"], include_in_schema=False)
 
 
 @router.get("/", response_model=ItemsPublic)

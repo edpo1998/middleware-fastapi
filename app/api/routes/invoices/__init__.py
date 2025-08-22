@@ -1,1 +1,0 @@
-from .singular import router as invoices_router
